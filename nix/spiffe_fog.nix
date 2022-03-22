@@ -1,5 +1,4 @@
 { mkShell
-, go
 , grpcurl
 , protobuf
 , protoc-gen-go
@@ -8,7 +7,6 @@
 
 mkShell rec {
   packages = [
-    go
     grpcurl
     protobuf
     protoc-gen-go
