@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+option go_package = "github.com/mjlshen/spiffe_fog/proto/agent";
+
+service Agent {
+  rpc AttestAgent(stream AttestAgentRequest) returns (stream AttestAgentResponse);
+}
+
+message AttestationData {
+  // The type of attestation data. This is typically the name of the plugin
+  // that produced that data.
+  string type = 1;
+
+  // The attestation data payload.
+  bytes payload = 2;
+}
+
+message AttestAgentRequest {
+  message Params {
+    // Required. The attestation data.
+    AttestationData data = 1;
+
+    // Required. The X509-SVID parameters.
+    AgentX509SVIDParams params = 2;
+  }
+
+  // Required. The data for the step in the attestation flow.
+  oneof step {
+    // Attestation parameters. These are only sent in the initial request.
+    Params params = 1;
+
+    // The response to a challenge issued by the attestor. Only sent in
+    // response to a challenge received by the issuer.
+    bytes challenge_response = 2;
+  }
+}
+
+message AttestAgentResponse {
+  message Result {
+    // The agent X509-SVID.
+    X509SVID svid = 1;
+  }
+
+  oneof step {
+    // Attestation results. If set, attestation has completed.
+    Result result = 1;
+
+    // A challenge issued by the attestor. If set, the caller is expected
+    // to send another request on the stream with the challenge response.
+    bytes challenge = 2;
+  }
+}
+
+// A SPIFFE ID, consisting of the trust domain name and a path portions of
+// the SPIFFE ID URI.
+message SPIFFEID {
+  // Trust domain portion the SPIFFE ID (e.g. "example.org")
+  string trust_domain = 1;
+
+  // The path component of the SPIFFE ID (e.g. "/foo/bar/baz"). The path
+  // SHOULD have a leading slash. Consumers MUST normalize the path before
+  // making any sort of comparison between IDs.
+  string path = 2;
+}
+
+// X.509 SPIFFE Verifiable Identity Document. It contains the raw X.509
+// certificate data as well as a few denormalized fields for convenience.
+message X509SVID {
+  // Certificate and intermediates required to form a chain of trust back to
+  // the X.509 authorities of the trust domain (ASN.1 DER encoded).
+  repeated bytes cert_chain = 1;
+
+  // SPIFFE ID of the SVID.
+  SPIFFEID id = 2;
+
+  // Expiration timestamp (seconds since Unix epoch).
+  int64 expires_at = 3;
+}
+
+message AgentX509SVIDParams {
+  // Required. The ASN.1 DER encoded Certificate Signing Request (CSR). The
+  // CSR is only used to convey the public key; other fields in the CSR are
+  // ignored. The agent X509-SVID attributes are determined by the server.
+  bytes csr = 1;
+}
