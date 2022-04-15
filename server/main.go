@@ -7,15 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/go-attestation/attest"
-	"github.com/mjlshen/spiffe_fog/pkg/common"
-	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
 
+	"github.com/google/go-attestation/attest"
+	"github.com/mjlshen/spiffe_fog/pkg/common"
 	"github.com/mjlshen/spiffe_fog/proto/agent"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
 
@@ -143,13 +143,28 @@ func (s *Service) attestChallengeResponse(ctx context.Context,
 	}, nil
 }
 
+// validEKHashes returns a map of hashes keys with values indicating if they are valid
+// TODO: Allow other backing stores
+func validEKHashes() map[string]bool {
+	return map[string]bool{
+		// GCP TPM
+		"ae76715da45c546d57473816bb7402b467ac7e11d76ae43205769b65e3821f9d": true,
+		// RPi Infineon TPM
+		"ae8dec3321f80ab68bdde38e3cf7d59612be0c0a608def2c3d55a63fd875e32c": true,
+	}
+}
+
+// isValidEK returns true if the provided EK is trusted by comparing the sha256 hash
+// of the EK public key after it has been converted to the ASN.1 DER format with
+// "valid" EK hashes.
 func isValidEK(ek *attest.EK) (bool, error) {
 	ekHash, err := common.GetPubHash(ek)
 	if err != nil {
 		return false, err
 	}
 
-	if ekHash != "ae8dec3321f80ab68bdde38e3cf7d59612be0c0a608def2c3d55a63fd875e32c" {
+	valid := validEKHashes()
+	if active, ok := valid[ekHash]; !ok || !active {
 		return false, fmt.Errorf("invalid EK hash: %s", ekHash)
 	}
 
