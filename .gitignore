@@ -1,5 +1,5 @@
 .envrc
 .direnv/*
 .idea/*
-client/client
-server/server
+client
+server

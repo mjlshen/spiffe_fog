@@ -130,7 +130,7 @@ func (s *Service) attestChallengeResponse(ctx context.Context,
 				Svid: &agent.X509SVID{
 					CertChain: nil,
 					Id: &agent.SPIFFEID{
-						TrustDomain: "test",
+						TrustDomain: "spiffe_fog_demo",
 						Path:        cr.URIs[0].String(),
 					},
 					ExpiresAt: 0,
