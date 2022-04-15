@@ -73,7 +73,14 @@ func (s *Service) attestChallengeResponse(ctx context.Context,
 		return nil, status.Errorf(codes.InvalidArgument, "malformed EK: %v", err)
 	}
 
-	if ok, err := isValidEK(ek); !ok {
+	cr, err := x509.ParseCertificateRequest(params.Params.Csr)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to parse CSR: %v", err)
+	}
+
+	path := cr.URIs[0].String()
+
+	if ok, err := isValidEK(ek, path); !ok {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid EK: %v", err)
 	}
 
@@ -118,11 +125,6 @@ func (s *Service) attestChallengeResponse(ctx context.Context,
 		return nil, status.Errorf(codes.PermissionDenied, "challenge response does not match")
 	}
 
-	cr, err := x509.ParseCertificateRequest(params.Params.Csr)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to parse CSR: %v", err)
-	}
-
 	log.Printf("successful attestation for %s", cr.URIs[0].String())
 	return &agent.AttestAgentResponse{
 		Step: &agent.AttestAgentResponse_Result_{
@@ -131,7 +133,7 @@ func (s *Service) attestChallengeResponse(ctx context.Context,
 					CertChain: nil,
 					Id: &agent.SPIFFEID{
 						TrustDomain: "spiffe_fog_demo",
-						Path:        cr.URIs[0].String(),
+						Path:        path,
 					},
 					ExpiresAt: 0,
 				},
@@ -140,29 +142,35 @@ func (s *Service) attestChallengeResponse(ctx context.Context,
 	}, nil
 }
 
-// validEKHashes returns a map of hashes keys with values indicating if they are valid
+// validEKHashes returns a map of hashes keys with values indicating the corresponding SPIFFE ID
 // TODO: Allow other backing stores
-func validEKHashes() map[string]bool {
-	return map[string]bool{
+func validEKHashes() map[string]string {
+	return map[string]string{
 		// GCP TPM
-		"ae76715da45c546d57473816bb7402b467ac7e11d76ae43205769b65e3821f9d": true,
+		"ae76715da45c546d57473816bb7402b467ac7e11d76ae43205769b65e3821f9d": "gcp",
 		// RPi Infineon TPM
-		"ae8dec3321f80ab68bdde38e3cf7d59612be0c0a608def2c3d55a63fd875e32c": true,
+		"ae8dec3321f80ab68bdde38e3cf7d59612be0c0a608def2c3d55a63fd875e32c": "rpi",
 	}
 }
 
 // isValidEK returns true if the provided EK is trusted by comparing the sha256 hash
 // of the EK public key after it has been converted to the ASN.1 DER format with
 // "valid" EK hashes.
-func isValidEK(ek *attest.EK) (bool, error) {
+func isValidEK(ek *attest.EK, path string) (bool, error) {
 	ekHash, err := common.GetPubHash(ek)
 	if err != nil {
 		return false, err
 	}
 
 	valid := validEKHashes()
-	if active, ok := valid[ekHash]; !ok || !active {
+	id, ok := valid[ekHash]
+	if !ok {
 		return false, fmt.Errorf("invalid EK hash: %s", ekHash)
+	}
+
+	expectedPath := fmt.Sprintf("spiffe://spiffe_fog/%s", id)
+	if expectedPath != path {
+		return false, fmt.Errorf("invalid SPIFFE ID requested: %s", path)
 	}
 
 	log.Printf("processing EK: %s", ekHash)

@@ -9,7 +9,7 @@ build:
 	GOOS=linux GOARCH=arm GOARM=6 go build -o server ./cmd/server/...; GOOS=linux GOARCH=arm GOARM=6 go build -o client ./cmd/client/...
 
 send:
-	scp -i ~/.ssh/id_ed25519_pi ./server/server pi@raspberrypi.local:/home/pi/server; scp -i ~/.ssh/id_ed25519_pi ./client/client pi@raspberrypi.local:/home/pi/client
+	scp -i ~/.ssh/id_ed25519_pi ./server pi@raspberrypi.local:/home/pi/server; scp -i ~/.ssh/id_ed25519_pi ./client pi@raspberrypi.local:/home/pi/client
 
 clean:
 	go mod tidy; rm -f client server
