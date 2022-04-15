@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -8,14 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 
 	"github.com/google/go-attestation/attest"
 	"github.com/mjlshen/spiffe_fog/pkg/common"
 	"github.com/mjlshen/spiffe_fog/proto/agent"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
 
@@ -188,19 +185,5 @@ func validateAttestAgentParams(params *agent.AttestAgentRequest_Params) error {
 		return errors.New("missing attestation data payload")
 	default:
 		return nil
-	}
-}
-
-func main() {
-	listener, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		panic(err)
-	}
-
-	s := grpc.NewServer()
-	reflection.Register(s)
-	agent.RegisterAgentServer(s, &Service{})
-	if err := s.Serve(listener); err != nil {
-		panic(err)
 	}
 }

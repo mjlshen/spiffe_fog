@@ -1,7 +1,6 @@
-package main
+package client
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,23 +8,25 @@ import (
 	"github.com/google/go-attestation/attest"
 	"github.com/mjlshen/spiffe_fog/pkg/common"
 	"github.com/mjlshen/spiffe_fog/proto/agent"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-func main() {
-	conn, err := grpc.Dial("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+type Client struct {
+	agent  agent.Agent_AttestAgentClient
+	domain string
+}
 
-	client := agent.NewAgentClient(conn)
-	attestClient, err := client.AttestAgent(context.TODO())
-	if err != nil {
-		log.Fatal(err)
-	}
+func generateSpiffeFogDomain(id string) string {
+	return fmt.Sprintf("spiffe://spiffe_fog/%s", id)
+}
 
+func New(a agent.Agent_AttestAgentClient, id string) Client {
+	return Client{
+		agent:  a,
+		domain: generateSpiffeFogDomain(id),
+	}
+}
+
+func (c Client) Attest() error {
 	tpm, err := attest.OpenTPM(&attest.OpenConfig{
 		TPMVersion: attest.TPMVersion20,
 	})
@@ -36,20 +37,20 @@ func main() {
 
 	ap, akBlob, err := common.GenerateCredentialActivationData(tpm)
 	if err != nil {
-		log.Fatalf("failed to generate credential activation data: %v", err)
+		return fmt.Errorf("failed to generate credential activation data: %v", err)
 	}
 
 	apBytes, err := json.Marshal(*ap)
 	if err != nil {
-		log.Fatalf("failed to marshal activation parameters into json: %v", err)
+		return fmt.Errorf("failed to marshal activation parameters into json: %v", err)
 	}
 
-	csr, _, err := common.NewCSRTemplate("spiffe://spiffe_fog.com/raspberrypi")
+	csr, _, err := common.NewCSRTemplate(c.domain)
 	if err != nil {
-		log.Fatalf("failed to generate CSR: %v", err)
+		return fmt.Errorf("failed to generate CSR: %v", err)
 	}
 
-	attestClient.Send(&agent.AttestAgentRequest{
+	c.agent.Send(&agent.AttestAgentRequest{
 		Step: &agent.AttestAgentRequest_Params_{
 			Params: &agent.AttestAgentRequest_Params{
 				Data: &agent.AttestationData{
@@ -63,33 +64,33 @@ func main() {
 		}},
 	)
 
-	challengeReq, err := attestClient.Recv()
+	challengeReq, err := c.agent.Recv()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	challengeBytes := challengeReq.GetChallenge()
 	var challenge attest.EncryptedCredential
 	if err := json.Unmarshal(challengeBytes, &challenge); err != nil {
-		log.Fatalf("failed to unmarshal challenge: %v", err)
+		return fmt.Errorf("failed to unmarshal challenge: %v", err)
 	}
 
 	decrypted, err := common.SolveCredentialActivationChallenge(tpm, challenge, akBlob)
 	if err != nil {
-		log.Fatalf("failed to respond to credential activation challenge: %v", err)
+		return fmt.Errorf("failed to respond to credential activation challenge: %v", err)
 	}
 
-	attestClient.Send(&agent.AttestAgentRequest{
+	c.agent.Send(&agent.AttestAgentRequest{
 		Step: &agent.AttestAgentRequest_ChallengeResponse{
 			ChallengeResponse: decrypted,
 		},
 	})
 
-	svidResp, err := attestClient.Recv()
+	svidResp, err := c.agent.Recv()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Print(svidResp.GetResult())
-	fmt.Println("SUCCESS!!")
+	return nil
 }
