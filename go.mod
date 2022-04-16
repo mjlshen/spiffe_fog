@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/google/certificate-transparency-go v1.1.1
-	github.com/google/go-attestation v0.4.3
+	github.com/google/go-attestation v0.4.4-0.20220404204839-8820d49b18d9
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.27.1
 )

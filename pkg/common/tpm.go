@@ -2,10 +2,10 @@ package common
 
 import (
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 
-	"github.com/google/certificate-transparency-go/x509"
 	"github.com/google/go-attestation/attest"
 )
 

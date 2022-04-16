@@ -6,9 +6,9 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN CGO_ENABLED=1 go build -v -o server ./cmd/server/...
+RUN CGO_ENABLED=0 go build -v -o server ./cmd/server/...
 
-FROM ubuntu:latest
+FROM gcr.io/distroless/static
 
 COPY --from=builder /go/src/spiffe_fog/server /
 CMD ["/server"]
