@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN CGO_ENABLED=0 go build -v -o server ./cmd/server/...
+RUN CGO_ENABLED=0 go build -v -ldflags="-s -w" -o server ./cmd/server/...
 
 FROM gcr.io/distroless/static
 
