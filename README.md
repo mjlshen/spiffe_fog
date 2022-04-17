@@ -39,7 +39,7 @@ sudo ./client -host "cloud.run.app:443"
 This requires additional dependencies - if you use the [nix](https://nixos.org/) package manager, a flake is provided to get these setup.
 
 * protobuf v3.19.0
-* protoc-gen-go v1.27.1
+* protoc-gen-go v1.28.0
 * protoc-gen-go-grpc v1.2.0
 
 If the protobuf definitions are modified, the generated code will need to be updated:
