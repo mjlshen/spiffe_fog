@@ -6,7 +6,7 @@ This is a project demonstrating leveraging the TPM remote attestation protocol t
 
 ### Dependencies
 
-* Go 1.18
+* Go 1.22
 
 ### Building
 

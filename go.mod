@@ -1,6 +1,6 @@
 module github.com/mjlshen/spiffe_fog
 
-go 1.21
+go 1.22
 
 require (
 	github.com/google/go-attestation v0.5.1
